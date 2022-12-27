@@ -1,0 +1,65 @@
+include:
+  template: Dependency-Scanning.gitlab-ci.yml
+
+image: python:{{cookiecutter.python_version}}-buster
+services:
+  - postgis/postgis:10-2.5
+
+variables:
+  ENV_PATH: .envs/.test.env
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/pip-cache"
+  POSTGRES_DB: test_postgis_db
+  POSTGRES_USER: test_postgis_user
+  POSTGRES_PASSWORD: custom_pass
+
+# This folder is cached between builds
+# http://docs.gitlab.com/ce/ci/yaml/README.html#cache
+cache:
+  paths:
+    - "$CI_PROJECT_DIR/pip-cache"
+  key: "$CI_PROJECT_ID"
+
+before_script:
+  - apt update -y && apt upgrade -y
+  - export DEBIAN_FRONTEND=noninteractive
+  - ln -fs /usr/share/zoneinfo/{{ cookiecutter.timezone }} /etc/localtime
+  - dpkg-reconfigure --frontend noninteractive tzdata
+  - apt install -y postgresql postgresql-contrib postgis libpq-dev
+  - export PGPASSWORD=$POSTGRES_PASSWORD
+  - export PGUSER=$POSTGRES_USER
+  - python -VV # Print out python version for debugging
+  - which python # for debugging
+  - pip3 install virtualenv
+  - virtualenv ../venv
+  - source ../venv/bin/activate
+  - export LC_ALL=C.UTF-8
+  - export LANG=C.UTF-8
+  - pip install --upgrade pip && pip install pip-tools
+  - pip-compile requirements.in && pip-sync
+  - curl -sL https://deb.nodesource.com/setup_lts.x | bash -
+  - apt install nodejs -yqq
+  - npm install -g gulp-cli
+  - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+  - echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+  - apt update -q && apt install yarn -yqq
+  - yarn install && gulp cp
+  - mkdir .envs/
+  - touch .envs/.test.env
+  - echo "DJANGO_SECRET_KEY='{Z+1?PKkd93k_2@_9WqVaqUY*lkfE75~j2Jk6qBGq_'" >> .envs/.test.env
+  - echo "DEBUG=False" >> .envs/.test.env
+  - echo "ALLOWED_HOSTS=" >> .envs/.test.env
+  - echo "BASE_URL=www.example.com" >> .envs/.test.env
+  - echo "NEXMO_API_KEY=" >> .envs/.test.env
+  - echo "NEXMO_API_SECRET=" >> .envs/.test.env
+  - echo "NEXMO_DEFAULT_FROM=" >> .envs/.test.env
+  - python manage.py collectstatic
+
+test:
+  variables:
+    DATABASE_URL: "postgis://test_postgis_user:custom_pass@postgis-postgis/test_postgis_db"
+    RECAPTCHA_PUBLIC_KEY: "$RECAPTCHA_PUBLIC_KEY"
+    RECAPTCHA_PRIVATE_KEY: "$RECAPTCHA_PRIVATE_KEY"
+    MAPBOX_ACCESS_TOKEN: "$MAPBOX_ACCESS_TOKEN"
+
+  script:
+    - pytest
