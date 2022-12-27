@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ["py{{cookiecutter.python_version|replace('.', '')}}"]
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | (.*)/migrations
+    | dist
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+known_third_party = ["captcha", "django", "environ", "factory", "fake_useragent", "faker", "faker_e164", "feedparser", "intl_tel_input", "model_utils", "modelcluster", "phonenumber_field", "pytest", "readtime", "sentry_sdk", "taggit", "titlecase", "wagtail", "wagtail_factories", "yattag"]
+
+[tool.commitizen]
+version = "{{ cookiecutter.version }}"
+version_files = [
+    "{{cookiecutter.project_slug}}/__init__.py",
+    "docs/conf.py",
+    "{{cookiecutter.project_slug}}/blog/rss_feed_display.py",
+]
+tag_format = "v$major.$minor.$patch"
+annotated_tag = true
+update_changelog_on_bump = false
+# changelog_file = "CHANGELOG.md"
+# changelog_incremental = true
